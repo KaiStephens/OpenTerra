@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenTerra Agents - Task Management</title>
+    <title>OpenTerra Agents - Code Task Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -97,6 +97,18 @@
             box-shadow: none;
         }
         
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
         .task-preview {
             max-height: 0;
             overflow: hidden;
@@ -104,7 +116,7 @@
         }
         
         .task-preview.expanded {
-            max-height: 400px;
+            max-height: 600px;
         }
         
         .custom-scrollbar::-webkit-scrollbar {
@@ -119,6 +131,18 @@
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 3px;
+        }
+        
+        .directory-indicator {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+        
+        .action-badge {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
         }
     </style>
 </head>
@@ -135,7 +159,7 @@
                         </div>
                         <div>
                             <h1 class="text-lg sm:text-xl font-semibold text-white leading-tight">OpenTerra Agents</h1>
-                            <p class="text-xs sm:text-sm text-gray-400 mt-0.5">Parallel AI Task Management</p>
+                            <p class="text-xs sm:text-sm text-gray-400 mt-0.5">AI Code Task Management</p>
                         </div>
                     </div>
                     
@@ -192,6 +216,72 @@
         <!-- Main Content -->
         <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             
+            <!-- Workspace Selection -->
+            <section class="glass-card rounded-2xl p-6 lg:p-8 mb-6 shadow-2xl">
+                <div class="space-y-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-white mb-3">Workspace Directory</h2>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Specify the local directory where AI agents will work. Leave empty to use the server's current directory.
+                        </p>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-gray-300">Directory Path</label>
+                        <input 
+                            type="text"
+                            x-model="settings.workspaceDir"
+                            @input="validateDirectoryPath()"
+                            placeholder="/Users/username/projects/my-project or C:\Users\username\projects\my-project"
+                            class="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm font-mono focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
+                        >
+                        
+                        <div class="flex items-start space-x-3">
+                            <div class="flex-shrink-0 mt-1">
+                                <div class="w-2 h-2 rounded-full"
+                                     :class="directoryStatus === 'valid' ? 'bg-green-500' : directoryStatus === 'invalid' ? 'bg-red-500' : 'bg-gray-500'">
+                                </div>
+                            </div>
+                            <div class="flex-1 text-sm">
+                                <template x-if="!settings.workspaceDir">
+                                    <span class="text-gray-400">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        No directory specified - agents will work in server's current directory
+                                    </span>
+                                </template>
+                                <template x-if="settings.workspaceDir && directoryStatus === 'valid'">
+                                    <span class="text-green-400">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        <span x-text="directoryMessage || 'Valid directory path'"></span>
+                                    </span>
+                                </template>
+                                <template x-if="settings.workspaceDir && directoryStatus === 'invalid'">
+                                    <span class="text-red-400">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        <span x-text="directoryMessage || 'Directory path may not exist or be accessible'"></span>
+                                    </span>
+                                </template>
+                                <template x-if="settings.workspaceDir && directoryStatus === 'unknown'">
+                                    <span class="text-gray-400">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <span x-text="directoryMessage || 'Directory path will be validated when task starts'"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-l-2 border-blue-500 pl-4 py-2 bg-blue-500/5 rounded-r-lg">
+                        <h4 class="text-sm font-medium text-blue-400 mb-1">Examples:</h4>
+                        <ul class="text-xs text-gray-400 space-y-1 font-mono">
+                            <li>• /Users/john/projects/my-react-app</li>
+                            <li>• /home/user/development/python-project</li>
+                            <li>• C:\Users\Jane\Documents\projects\my-app</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
             <!-- Task Input Section -->
             <section class="glass-card rounded-2xl p-6 lg:p-8 mb-8 shadow-2xl">
                 <div class="space-y-6">
@@ -201,16 +291,23 @@
                             x-ref="taskInput"
                             x-model="newTaskContent"
                             @keydown.ctrl.enter="createTask()"
-                            placeholder="Describe your task in detail..."
-                            rows="3"
+                            placeholder="Examples:
+• Analyze this codebase and suggest improvements
+• Create a new React component for user authentication  
+• Fix all TypeScript errors in the src/ directory
+• Add unit tests for the user service
+• Refactor the database models to use better naming"
+                            rows="4"
                             class="w-full p-5 bg-transparent border border-gray-600 rounded-xl text-white text-lg placeholder-gray-500 resize-none leading-relaxed focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
                         ></textarea>
                     </div>
                     
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
-                        <div class="text-sm text-gray-500 flex items-center space-x-2">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Ctrl+Enter to create task • Tasks run in parallel</span>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-sm text-gray-500 flex items-center space-x-2">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Ctrl+Enter to start • Agents can edit files, run commands, and analyze code</span>
+                            </div>
                         </div>
                         
                         <button
@@ -238,11 +335,11 @@
                 <template x-if="tasks.length === 0">
                     <div class="text-center py-16">
                         <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-                            <i class="fas fa-tasks text-black text-3xl"></i>
+                            <i class="fas fa-code text-black text-3xl"></i>
                         </div>
                         <h3 class="text-3xl font-semibold mb-4 text-white">No tasks yet</h3>
                         <p class="text-lg text-gray-400 mb-8 max-w-md mx-auto">
-                            Create your first task above and watch AI agents work in parallel
+                            Create your first coding task above and watch AI agents work on your code
                         </p>
                     </div>
                 </template>
@@ -271,7 +368,19 @@
                                         <span class="text-sm text-gray-400" x-text="task.modelUsed"></span>
                                     </div>
                                     <h3 class="text-lg font-medium text-white mb-2" x-text="task.title"></h3>
-                                    <p class="text-sm text-gray-300 leading-relaxed" x-text="truncateText(task.content, 150)"></p>
+                                    <p class="text-sm text-gray-300 leading-relaxed mb-3" x-text="truncateText(task.content, 120)"></p>
+                                    
+                                    <!-- Action Badges -->
+                                    <template x-if="task.actions && task.actions.length > 0">
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-for="action in task.actions.slice(0, 3)" :key="action">
+                                                <span class="action-badge px-2 py-1 rounded text-xs font-medium" x-text="action"></span>
+                                            </template>
+                                            <template x-if="task.actions.length > 3">
+                                                <span class="action-badge px-2 py-1 rounded text-xs font-medium">+<span x-text="task.actions.length - 3"></span> more</span>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                                 <div class="flex items-center space-x-2 ml-4">
                                     <template x-if="task.status === 'working'">
@@ -288,17 +397,20 @@
                                 </div>
                             </div>
                             
-                            <!-- Task Messages (Expandable) -->
+                            <!-- Task Messages & Actions (Expandable) -->
                             <div class="task-preview"
                                  :class="task.expanded ? 'expanded' : ''">
                                 <div class="border-t border-gray-700 pt-4 mt-4">
-                                    <div class="space-y-4 max-h-80 overflow-y-auto custom-scrollbar">
+                                    <div class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
                                         <template x-for="message in task.messages" :key="message.timestamp">
                                             <div class="space-y-2">
                                                 <div class="flex items-center space-x-2 text-xs text-gray-500">
                                                     <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
                                                     <span x-text="message.role === 'user' ? 'You' : 'Agent'"></span>
                                                     <span x-text="formatTime(message.timestamp)"></span>
+                                                    <template x-if="message.action">
+                                                        <span class="action-badge px-2 py-1 rounded text-xs" x-text="message.action"></span>
+                                                    </template>
                                                 </div>
                                                 <div class="text-sm text-gray-200 leading-relaxed"
                                                      x-html="formatMessage(message.content)"></div>
@@ -319,12 +431,15 @@
             return {
                 providers: [],
                 settings: {
-                    provider: 'openrouter',
+                    provider: 'anthropic',
                     apiKey: '',
-                    model: ''
+                    model: '',
+                    workspaceDir: ''
                 },
                 newTaskContent: '',
                 tasks: [],
+                directoryStatus: 'unknown',
+                directoryMessage: '',
                 
                 get currentProvider() {
                     return this.providers.find(p => p.id === this.settings.provider);
@@ -364,6 +479,50 @@
                     this.saveToStorage();
                 },
                 
+                async validateDirectoryPath() {
+                    if (!this.settings.workspaceDir || this.settings.workspaceDir.trim() === '') {
+                        this.directoryStatus = 'unknown';
+                        this.directoryMessage = '';
+                        this.saveToStorage();
+                        return;
+                    }
+                    
+                    const path = this.settings.workspaceDir.trim();
+                    console.log('Validating directory path:', path);
+                    
+                    try {
+                        const response = await fetch('/api/validate_directory', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                directoryPath: path
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Validation response:', data);
+                        
+                        if (data.valid) {
+                            this.directoryStatus = 'valid';
+                            this.directoryMessage = data.message || 'Directory is valid';
+                        } else {
+                            this.directoryStatus = 'invalid';
+                            this.directoryMessage = data.message || data.error || 'Directory validation failed';
+                        }
+                        
+                    } catch (error) {
+                        console.error('Directory validation failed:', error);
+                        this.directoryStatus = 'unknown';
+                        this.directoryMessage = `Validation error: ${error.message}`;
+                    }
+                    
+                    this.saveToStorage();
+                },
+                
                 canCreateTask() {
                     return this.settings.apiKey && 
                            this.settings.provider && 
@@ -386,6 +545,7 @@
                         createdAt: new Date(),
                         modelUsed: this.settings.model,
                         expanded: false,
+                        actions: [],
                         messages: [
                             {
                                 role: 'user',
@@ -404,14 +564,14 @@
                 
                 async runTask(task) {
                     try {
-                        const response = await fetch('/api/chat', {
+                        const response = await fetch('/api/agent/execute', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                message: task.content,
+                                taskId: task.id,
+                                instruction: task.content,
                                 settings: this.settings,
-                                chatId: task.id,
-                                messages: []
+                                workspaceDir: this.settings.workspaceDir
                             })
                         });
                         
@@ -420,12 +580,14 @@
                         // Update task with response
                         const taskIndex = this.tasks.findIndex(t => t.id === task.id);
                         if (taskIndex !== -1) {
-                            if (data.response) {
+                            if (data.success) {
                                 this.tasks[taskIndex].status = 'completed';
+                                this.tasks[taskIndex].actions = data.actions || [];
                                 this.tasks[taskIndex].messages.push({
                                     role: 'assistant',
-                                    content: data.response,
-                                    timestamp: new Date()
+                                    content: data.result,
+                                    timestamp: new Date(),
+                                    action: data.primaryAction
                                 });
                             } else {
                                 this.tasks[taskIndex].status = 'error';
@@ -455,8 +617,8 @@
                 
                 generateTaskTitle(content) {
                     // Generate a short title from the content
-                    const words = content.split(' ').slice(0, 8);
-                    return words.join(' ') + (content.split(' ').length > 8 ? '...' : '');
+                    const words = content.split(' ').slice(0, 6);
+                    return words.join(' ') + (content.split(' ').length > 6 ? '...' : '');
                 },
                 
                 toggleTaskExpanded(taskId) {
@@ -474,7 +636,8 @@
                     return content
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
                         .replace(/\*(.*?)\*/g, '<em class="text-gray-300">$1</em>')
-                        .replace(/`(.*?)`/g, '<code class="bg-gray-900 px-2 py-1 rounded text-gray-100 text-sm font-mono">$1</code>')
+                        .replace(/`(.*?)`/g, '<code class="bg-gray-900 px-2 py-1 rounded text-gray-100 text-xs font-mono">$1</code>')
+                        .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-900 p-3 rounded-lg mt-2 mb-2 text-xs overflow-x-auto border border-gray-700"><code class="text-gray-300 font-mono">$1</code></pre>')
                         .replace(/\n/g, '<br>');
                 },
                 

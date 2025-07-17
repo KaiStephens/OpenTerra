@@ -46,6 +46,8 @@ from provider_config import (
     validate_custom_model_format
 )
 
+from agent_system import Agent, validate_workspace_directory
+
 # Pydantic Models
 class ChatMessage(BaseModel):
     role: str  # 'user', 'assistant', 'system'
@@ -69,6 +71,20 @@ class ChatSettings(BaseModel):
     apiKey: str
     model: Optional[str] = None
     customModel: Optional[str] = ""  # For custom model input
+
+class AgentExecuteRequest(BaseModel):
+    taskId: str
+    instruction: str
+    settings: Dict[str, Any]
+    workspaceDir: Optional[str] = None
+
+class AgentExecuteResponse(BaseModel):
+    success: bool
+    result: Optional[str] = None
+    error: Optional[str] = None
+    actions: List[str] = []
+    primaryAction: Optional[str] = None
+    iterations: Optional[int] = None
 
 class ProviderInfo(BaseModel):
     id: str
@@ -362,6 +378,71 @@ async def validate_key_endpoint(request: dict):
     except Exception as e:
         return {"valid": False, "error": str(e)}
 
+@app.post("/api/validate_directory")
+async def validate_directory_endpoint(request: dict):
+    """Validate a workspace directory path."""
+    directory_path = request.get("directoryPath", "")
+    
+    validation_result = validate_workspace_directory(directory_path)
+    
+    return {
+        "valid": validation_result["valid"],
+        "path": validation_result["path"],
+        "message": validation_result["message"],
+        "error": validation_result.get("error")
+    }
+
+@app.post("/api/agent/execute")
+async def agent_execute_endpoint(request: AgentExecuteRequest) -> AgentExecuteResponse:
+    """Execute a task using the AI agent with real tools."""
+    try:
+        # Convert settings dict to ChatSettings
+        settings = ChatSettings(**request.settings)
+        
+        # Validate settings
+        if not settings.provider or not settings.apiKey or not settings.model:
+            return AgentExecuteResponse(
+                success=False,
+                error="Please configure your API key and model in settings",
+                actions=[],
+                primaryAction="error"
+            )
+        
+        # Determine which model to use
+        final_model = settings.model
+        if settings.customModel and validate_custom_model_format(settings.customModel):
+            final_model = settings.customModel.strip()
+        
+        # Create and execute agent
+        agent = Agent(
+            provider=settings.provider,
+            api_key=settings.apiKey,
+            model=final_model
+        )
+        
+        # Execute the task
+        result = await agent.execute_task(
+            instruction=request.instruction,
+            workspace_dir=request.workspaceDir
+        )
+        
+        return AgentExecuteResponse(
+            success=result["success"],
+            result=result.get("result"),
+            error=result.get("error"),
+            actions=result.get("actions", []),
+            primaryAction=result.get("primaryAction"),
+            iterations=result.get("iterations")
+        )
+        
+    except Exception as e:
+        return AgentExecuteResponse(
+            success=False,
+            error=f"Agent execution failed: {str(e)}",
+            actions=[],
+            primaryAction="error"
+        )
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates."""
@@ -422,12 +503,17 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    print("🚀 Starting OpenTerra Chat - 2025 Edition...")
+    print("🚀 Starting OpenTerra Agents - 2025 Edition...")
     print(f"📡 Server: http://{args.host}:{args.port}")
-    print("💬 Chat Interface: http://127.0.0.1:8000")
-    print(f"🤖 Available providers: {', '.join(get_available_providers())}")
+    print("🤖 Agent Interface: http://127.0.0.1:8000")
+    print(f"🛠️  Available providers: {', '.join(get_available_providers())}")
     print("🔥 Latest models: Claude 4 Opus/Sonnet, DeepSeek R1, GPT-4o, Grok 3, Kimi K2!")
-    print("✨ Custom model support enabled!")
+    print("✨ AI Agents with REAL tools:")
+    print("   • File editing & creation")
+    print("   • Code analysis & refactoring") 
+    print("   • Terminal command execution")
+    print("   • Git operations")
+    print("   • Directory workspace management")
     
     uvicorn.run(
         "web_ui:app",
