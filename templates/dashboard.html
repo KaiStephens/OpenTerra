@@ -3,675 +3,504 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenTerra Chat</title>
+    <title>OpenTerra Agents - Task Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#6366f1',
-                        secondary: '#1f2937',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444',
-                        chat: {
-                          bg: '#f8fafc',
-                          sidebar: '#ffffff',
-                          message: '#f1f5f9'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .chat-container {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+        * {
+            box-sizing: border-box;
         }
         
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
+        body {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
         }
         
-        .message {
-            max-width: 80%;
-            margin-bottom: 1rem;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            word-wrap: break-word;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
         
-        .message.user {
-            background-color: #6366f1;
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 0.25rem;
+        .task-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+            border-left: 3px solid #ffffff;
+            transition: all 0.3s ease;
         }
         
-        .message.assistant {
-            background-color: #f1f5f9;
-            color: #1f2937;
-            margin-right: auto;
-            border-bottom-left-radius: 0.25rem;
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
         }
         
-        .message.system {
-            background-color: #fef3c7;
-            color: #92400e;
-            margin: 0 auto;
-            text-align: center;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
+        .task-working {
+            border-left-color: #fbbf24;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.05));
         }
         
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.75rem 1rem;
-            background-color: #f1f5f9;
-            border-radius: 1rem;
-            margin-right: auto;
-            max-width: 80px;
+        .task-completed {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
         }
         
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            background-color: #6b7280;
+        .task-error {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            animation: typing 1.4s infinite;
         }
         
-        .typing-dot:nth-child(2) {
-            animation-delay: 0.2s;
+        .status-working {
+            background: #fbbf24;
+            animation: pulse 1.5s ease-in-out infinite;
         }
         
-        .typing-dot:nth-child(3) {
-            animation-delay: 0.4s;
+        .status-completed {
+            background: #10b981;
         }
         
-        @keyframes typing {
-            0%, 60%, 100% {
-                transform: translateY(0);
-                opacity: 0.5;
-            }
-            30% {
-                transform: translateY(-10px);
-                opacity: 1;
-            }
+        .status-error {
+            background: #ef4444;
         }
         
-        .sidebar {
-            transition: transform 0.3s ease-in-out;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         
-        .sidebar.hidden {
-            transform: translateX(-100%);
+        .btn-primary {
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #000000;
+            border: none;
+            transition: all 0.3s ease;
         }
         
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                z-index: 20;
-                height: 100vh;
-            }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .task-preview {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .task-preview.expanded {
+            max-height: 400px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
         }
     </style>
 </head>
-<body class="bg-gray-50 h-screen overflow-hidden" x-data="chatApp()">
-    
-    <!-- Sidebar -->
-    <div class="sidebar fixed left-0 top-0 h-full w-80 bg-white border-r border-gray-200 shadow-sm" :class="{'hidden': !showSidebar}">
-        <div class="flex flex-col h-full">
-            <!-- Sidebar Header -->
-            <div class="p-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-xl font-bold text-gray-900">OpenTerra</h1>
-                    <button @click="showSidebar = false" class="md:hidden text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Chat History -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <div class="mb-4">
-                    <button @click="startNewChat()" class="w-full flex items-center justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600 transition-colors">
-                        <i class="fas fa-plus mr-2"></i>
-                        New Chat
-                    </button>
-                </div>
-                
-                <div class="space-y-2">
-                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Recent Chats</h3>
-                    <template x-for="chat in chatHistory" :key="chat.id">
-                        <div @click="loadChat(chat.id)" 
-                             class="p-3 rounded-lg cursor-pointer transition-colors"
-                             :class="currentChatId === chat.id ? 'bg-primary text-white' : 'hover:bg-gray-100'">
-                            <div class="font-medium text-sm" x-text="chat.title"></div>
-                            <div class="text-xs opacity-75" x-text="formatDate(chat.lastMessage)"></div>
+<body class="bg-black text-white min-h-screen">
+    <div id="app" x-data="taskApp()" class="min-h-screen flex flex-col">
+        
+        <!-- Header -->
+        <header class="glass-card border-b border-gray-800 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
+                            <i class="fas fa-robot text-black text-sm sm:text-lg"></i>
                         </div>
-                    </template>
-                </div>
-            </div>
-            
-            <!-- Settings Button -->
-            <div class="p-4 border-t border-gray-200">
-                <button @click="showSettings = true" class="w-full flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                    <i class="fas fa-cog mr-2"></i>
-                    Settings
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Chat Area -->
-    <div class="chat-container" :class="showSidebar ? 'ml-80' : 'ml-0'">
-        
-        <!-- Top Bar -->
-        <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center">
-                <button @click="showSidebar = !showSidebar" class="mr-4 text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div>
-                    <h2 class="font-semibold text-gray-900" x-text="currentChat.title || 'New Chat'"></h2>
-                    <div class="text-sm text-gray-500" x-show="currentProvider">
-                        <span x-text="currentProvider"></span>
-                        <span x-show="currentModel" x-text="` • ${currentModel}`"></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-                <div class="flex items-center text-sm">
-                    <div class="w-2 h-2 rounded-full mr-2" :class="connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'"></div>
-                    <span class="text-gray-600" x-text="connectionStatus === 'connected' ? 'Connected' : 'Disconnected'"></span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Messages Area -->
-        <div class="chat-messages bg-chat-bg" x-ref="messagesContainer">
-            <div x-show="messages.length === 0" class="flex items-center justify-center h-full text-gray-500">
-                <div class="text-center">
-                    <i class="fas fa-comments text-6xl mb-4 opacity-50"></i>
-                    <p class="text-xl mb-2">Start a conversation</p>
-                    <p class="text-sm">Send a message to begin chatting with Claude</p>
-                </div>
-            </div>
-            
-            <template x-for="message in messages" :key="message.id">
-                <div class="message" :class="message.role">
-                    <div x-show="message.role === 'user'" class="flex items-start justify-end">
-                        <div class="message user" x-html="formatMessage(message.content)"></div>
-                    </div>
-                    <div x-show="message.role === 'assistant'" class="flex items-start">
-                        <div class="message assistant" x-html="formatMessage(message.content)"></div>
-                    </div>
-                    <div x-show="message.role === 'system'" class="message system" x-html="formatMessage(message.content)"></div>
-                </div>
-            </template>
-            
-            <!-- Typing Indicator -->
-            <div x-show="isTyping" class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        </div>
-        
-        <!-- Input Area -->
-        <div class="bg-white border-t border-gray-200 p-4">
-            <form @submit.prevent="sendMessage()" class="flex items-end space-x-4">
-                <div class="flex-1">
-                    <textarea 
-                        x-model="currentMessage" 
-                        @keydown.enter.prevent="handleEnter($event)"
-                        placeholder="Type your message..."
-                        rows="1"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-                        :disabled="isTyping || !isConfigured"
-                        x-ref="messageInput"
-                        style="min-height: 56px; max-height: 200px;"
-                        @input="autoResize($event)"></textarea>
-                </div>
-                <button 
-                    type="submit" 
-                    :disabled="!currentMessage.trim() || isTyping || !isConfigured"
-                    class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </form>
-            
-            <div x-show="!isConfigured" class="mt-2 text-center">
-                <p class="text-sm text-amber-600">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    Please configure your API key in 
-                    <button @click="showSettings = true" class="underline hover:text-amber-700">Settings</button>
-                </p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Settings Modal -->
-    <div x-show="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click.self="showSettings = false">
-        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-900">Settings</h3>
-                <button @click="showSettings = false" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto max-h-96">
-                <!-- API Configuration -->
-                <div class="mb-6">
-                    <h4 class="text-md font-medium text-gray-900 mb-4">API Configuration</h4>
-                    
-                    <!-- Provider Selection -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
-                        <select x-model="settings.provider" @change="onProviderChange()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                            <option value="">Select a provider...</option>
-                            <template x-for="provider in availableProviders" :key="provider.name">
-                                <option :value="provider.name" x-text="provider.name + ' - ' + provider.description"></option>
-                            </template>
-                        </select>
-                    </div>
-                    
-                    <!-- API Key -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            API Key
-                            <span x-show="settings.provider" x-text="'(' + getApiKeyLabel(settings.provider) + ')'"></span>
-                        </label>
-                        <div class="relative">
-                            <input 
-                                :type="showApiKey ? 'text' : 'password'"
-                                x-model="settings.apiKey" 
-                                placeholder="Enter your API key..."
-                                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                            <button 
-                                type="button"
-                                @click="showApiKey = !showApiKey"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                <i :class="showApiKey ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                            </button>
+                        <div>
+                            <h1 class="text-lg sm:text-xl font-semibold text-white leading-tight">OpenTerra Agents</h1>
+                            <p class="text-xs sm:text-sm text-gray-400 mt-0.5">Parallel AI Task Management</p>
                         </div>
                     </div>
                     
-                    <!-- Model Selection -->
-                    <div x-show="settings.provider" class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Model</label>
-                        <select x-model="settings.model" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                            <option value="">Default</option>
-                            <template x-for="model in availableModels" :key="model">
-                                <option :value="model" x-text="model"></option>
-                            </template>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Chat Settings Info -->
-                <div class="mb-6">
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div class="flex items-start">
-                            <i class="fas fa-info-circle text-blue-500 mr-3 mt-0.5"></i>
-                            <div class="text-sm text-blue-700">
-                                <p class="font-medium mb-1">Chat Settings</p>
-                                <p>Temperature is set to 0.7 for optimal balance between creativity and consistency. All models use smart token limits automatically.</p>
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
+                        <!-- Provider -->
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-1">Provider</label>
+                            <select 
+                                x-model="settings.provider" 
+                                @change="onProviderChange()"
+                                class="px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm w-full sm:min-w-32"
+                            >
+                                <template x-for="provider in providers" :key="provider.id">
+                                    <option :value="provider.id" x-text="provider.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        
+                        <!-- Model -->
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-1">Model</label>
+                            <select 
+                                x-model="settings.model"
+                                class="px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm w-full sm:min-w-48"
+                            >
+                                <template x-for="model in currentProvider?.models || []" :key="model.id">
+                                    <option :value="model.id" x-text="model.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        
+                        <!-- API Key -->
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-1">API Key</label>
+                            <div class="relative">
+                                <input 
+                                    type="password"
+                                    x-model="settings.apiKey" 
+                                    placeholder="Enter key..."
+                                    class="px-3 sm:px-4 py-2 sm:py-2.5 pr-10 bg-gray-900 border border-gray-700 rounded-xl text-white text-sm w-full sm:min-w-40"
+                                >
+                                <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                    <div class="w-2 h-2 rounded-full" 
+                                         :class="settings.apiKey ? 'bg-green-500' : 'bg-gray-500'">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             
-            <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                <button @click="showSettings = false" class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                    Cancel
-                </button>
-                <button @click="saveSettings()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600 transition-colors">
-                    Save Settings
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Mobile sidebar overlay -->
-    <div x-show="showSidebar" @click="showSidebar = false" class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-10"></div>
-    
-    <!-- Notification Toast -->
-    <div x-show="notification.show" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 transform translate-y-2"
-         x-transition:enter-end="opacity-100 transform translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 transform translate-y-0"
-         x-transition:leave-end="opacity-0 transform translate-y-2"
-         class="fixed bottom-4 right-4 z-50">
-        <div class="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <i :class="notification.type === 'success' ? 'fas fa-check-circle text-green-500' : 'fas fa-exclamation-circle text-red-500'"></i>
+            <!-- Task Input Section -->
+            <section class="glass-card rounded-2xl p-6 lg:p-8 mb-8 shadow-2xl">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-lg font-medium text-white mb-3">What would you like the agent to do?</label>
+                        <textarea
+                            x-ref="taskInput"
+                            x-model="newTaskContent"
+                            @keydown.ctrl.enter="createTask()"
+                            placeholder="Describe your task in detail..."
+                            rows="3"
+                            class="w-full p-5 bg-transparent border border-gray-600 rounded-xl text-white text-lg placeholder-gray-500 resize-none leading-relaxed focus:ring-2 focus:ring-white focus:border-white outline-none transition-all"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                        <div class="text-sm text-gray-500 flex items-center space-x-2">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Ctrl+Enter to create task • Tasks run in parallel</span>
+                        </div>
+                        
+                        <button
+                            @click="createTask()"
+                            :disabled="!canCreateTask()"
+                            class="btn-primary flex items-center justify-center space-x-3 px-8 py-4 rounded-xl font-semibold text-lg shadow-lg w-full sm:w-auto"
+                        >
+                            <i class="fas fa-rocket"></i>
+                            <span>Start Agent</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-gray-900" x-text="notification.title"></p>
-                    <p class="text-sm text-gray-600" x-text="notification.message"></p>
+            </section>
+
+            <!-- Tasks Dashboard -->
+            <section class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-semibold text-white">Active Tasks</h2>
+                    <div class="text-sm text-gray-400">
+                        <span x-text="tasks.filter(t => t.status === 'working').length"></span> working • 
+                        <span x-text="tasks.filter(t => t.status === 'completed').length"></span> completed
+                    </div>
                 </div>
-                <button @click="notification.show = false" class="ml-4 text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
+                
+                <template x-if="tasks.length === 0">
+                    <div class="text-center py-16">
+                        <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                            <i class="fas fa-tasks text-black text-3xl"></i>
+                        </div>
+                        <h3 class="text-3xl font-semibold mb-4 text-white">No tasks yet</h3>
+                        <p class="text-lg text-gray-400 mb-8 max-w-md mx-auto">
+                            Create your first task above and watch AI agents work in parallel
+                        </p>
+                    </div>
+                </template>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <template x-for="task in tasks" :key="task.id">
+                        <div class="task-card rounded-2xl p-6 cursor-pointer"
+                             :class="{
+                                 'task-working': task.status === 'working',
+                                 'task-completed': task.status === 'completed',
+                                 'task-error': task.status === 'error'
+                             }"
+                             @click="toggleTaskExpanded(task.id)">
+                            
+                            <!-- Task Header -->
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3 mb-2">
+                                        <div class="status-indicator"
+                                             :class="{
+                                                 'status-working': task.status === 'working',
+                                                 'status-completed': task.status === 'completed',
+                                                 'status-error': task.status === 'error'
+                                             }"></div>
+                                        <span class="text-sm text-gray-400" x-text="formatTime(task.createdAt)"></span>
+                                        <span class="text-sm text-gray-400" x-text="task.modelUsed"></span>
+                                    </div>
+                                    <h3 class="text-lg font-medium text-white mb-2" x-text="task.title"></h3>
+                                    <p class="text-sm text-gray-300 leading-relaxed" x-text="truncateText(task.content, 150)"></p>
+                                </div>
+                                <div class="flex items-center space-x-2 ml-4">
+                                    <template x-if="task.status === 'working'">
+                                        <i class="fas fa-spinner fa-spin text-yellow-500"></i>
+                                    </template>
+                                    <template x-if="task.status === 'completed'">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                    </template>
+                                    <template x-if="task.status === 'error'">
+                                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                                    </template>
+                                    <i class="fas fa-chevron-down transition-transform"
+                                       :class="task.expanded ? 'rotate-180' : ''"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Messages (Expandable) -->
+                            <div class="task-preview"
+                                 :class="task.expanded ? 'expanded' : ''">
+                                <div class="border-t border-gray-700 pt-4 mt-4">
+                                    <div class="space-y-4 max-h-80 overflow-y-auto custom-scrollbar">
+                                        <template x-for="message in task.messages" :key="message.timestamp">
+                                            <div class="space-y-2">
+                                                <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                                    <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
+                                                    <span x-text="message.role === 'user' ? 'You' : 'Agent'"></span>
+                                                    <span x-text="formatTime(message.timestamp)"></span>
+                                                </div>
+                                                <div class="text-sm text-gray-200 leading-relaxed"
+                                                     x-html="formatMessage(message.content)"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script>
-        function chatApp() {
+        function taskApp() {
             return {
-                // UI State
-                showSidebar: window.innerWidth >= 768,
-                showSettings: false,
-                showApiKey: false,
-                isTyping: false,
-                connectionStatus: 'disconnected',
-                socket: null,
-                
-                // Chat State
-                currentMessage: '',
-                messages: [],
-                currentChatId: null,
-                chatHistory: [],
-                currentChat: {},
-                
-                // Configuration
-                isConfigured: false,
-                currentProvider: null,
-                currentModel: null,
-                availableProviders: [],
-                availableModels: [],
-                
-                // Settings
+                providers: [],
                 settings: {
-                    provider: '',
+                    provider: 'openrouter',
                     apiKey: '',
-                    model: '',
-                    baseUrl: ''
+                    model: ''
+                },
+                newTaskContent: '',
+                tasks: [],
+                
+                get currentProvider() {
+                    return this.providers.find(p => p.id === this.settings.provider);
                 },
                 
-                // Notifications
-                notification: {
-                    show: false,
-                    type: 'success',
-                    title: '',
-                    message: ''
-                },
-
                 async init() {
-                    this.loadSettings();
-                    this.connectWebSocket();
                     await this.loadProviders();
-                    this.checkConfiguration();
-                    this.startNewChat();
+                    this.loadFromStorage();
                     
-                    // Handle window resize
-                    window.addEventListener('resize', () => {
-                        if (window.innerWidth >= 768) {
-                            this.showSidebar = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.taskInput) {
+                            this.$refs.taskInput.focus();
                         }
                     });
                 },
                 
-                loadSettings() {
-                    const saved = localStorage.getItem('openTerraSettings');
-                    if (saved) {
-                        this.settings = { ...this.settings, ...JSON.parse(saved) };
-                    }
-                },
-                
-                saveSettings() {
-                    localStorage.setItem('openTerraSettings', JSON.stringify(this.settings));
-                    this.checkConfiguration();
-                    this.showSettings = false;
-                    this.showNotification('success', 'Settings Saved', 'Your configuration has been saved');
-                },
-                
-                checkConfiguration() {
-                    this.isConfigured = this.settings.provider && this.settings.apiKey;
-                    this.currentProvider = this.settings.provider;
-                    this.currentModel = this.settings.model;
-                },
-
-                connectWebSocket() {
-                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const wsUrl = `${protocol}//${window.location.host}/ws`;
-                    
-                    this.socket = new WebSocket(wsUrl);
-                    
-                    this.socket.onopen = () => {
-                        this.connectionStatus = 'connected';
-                    };
-                    
-                    this.socket.onclose = () => {
-                        this.connectionStatus = 'disconnected';
-                        setTimeout(() => this.connectWebSocket(), 3000);
-                    };
-                    
-                    this.socket.onmessage = (event) => {
-                        const message = JSON.parse(event.data);
-                        this.handleWebSocketMessage(message);
-                    };
-                },
-
-                handleWebSocketMessage(message) {
-                    switch (message.type) {
-                        case 'chat_response':
-                            this.handleChatResponse(message.data);
-                            break;
-                        case 'error':
-                            this.showNotification('error', 'Error', message.data.message);
-                            this.isTyping = false;
-                            break;
-                    }
-                },
-
                 async loadProviders() {
                     try {
                         const response = await fetch('/api/providers');
                         const data = await response.json();
-                        this.availableProviders = data.providers;
+                        this.providers = data.providers;
+                        
+                        if (this.providers.length > 0 && !this.settings.provider) {
+                            this.settings.provider = this.providers[0].id;
+                            this.onProviderChange();
+                        }
                     } catch (error) {
                         console.error('Failed to load providers:', error);
                     }
                 },
-
-                async onProviderChange() {
-                    if (this.settings.provider) {
-                        await this.loadModels(this.settings.provider);
+                
+                onProviderChange() {
+                    const provider = this.currentProvider;
+                    if (provider) {
+                        this.settings.model = provider.defaultModel;
                     }
+                    this.saveToStorage();
                 },
-
-                async loadModels(providerName) {
-                    try {
-                        const response = await fetch(`/api/providers/${providerName}/models`);
-                        const data = await response.json();
-                        this.availableModels = data.models;
-                    } catch (error) {
-                        console.error('Failed to load models:', error);
-                    }
+                
+                canCreateTask() {
+                    return this.settings.apiKey && 
+                           this.settings.provider && 
+                           this.settings.model &&
+                           this.newTaskContent.trim().length > 0;
                 },
-
-                getApiKeyLabel(provider) {
-                    const labels = {
-                        'anthropic': 'ANTHROPIC_API_KEY',
-                        'openrouter': 'OPENROUTER_API_KEY', 
-                        'moonshot': 'OPENROUTER_API_KEY'
-                    };
-                    return labels[provider] || 'API_KEY';
-                },
-
-                needsBaseUrl(provider) {
-                    return false; // No custom base URLs needed for our 3 providers
-                },
-
-                startNewChat() {
-                    this.currentChatId = Date.now().toString();
-                    this.currentChat = {
-                        id: this.currentChatId,
-                        title: 'New Chat',
-                        created: new Date(),
-                        lastMessage: new Date()
-                    };
-                    this.messages = [];
-                    this.addSystemMessage('Chat started. Ready to help!');
-                },
-
-                loadChat(chatId) {
-                    // Implementation for loading previous chats
-                    const chat = this.chatHistory.find(c => c.id === chatId);
-                    if (chat) {
-                        this.currentChatId = chatId;
-                        this.currentChat = chat;
-                        // Load messages for this chat
-                    }
-                },
-
-                addSystemMessage(content) {
-                    this.messages.push({
-                        id: Date.now().toString() + Math.random(),
-                        role: 'system',
-                        content: content,
-                        timestamp: new Date()
-                    });
-                    this.scrollToBottom();
-                },
-
-                addUserMessage(content) {
-                    const message = {
-                        id: Date.now().toString() + Math.random(),
-                        role: 'user',
-                        content: content,
-                        timestamp: new Date()
-                    };
-                    this.messages.push(message);
-                    this.scrollToBottom();
-                    return message;
-                },
-
-                addAssistantMessage(content) {
-                    const message = {
-                        id: Date.now().toString() + Math.random(),
-                        role: 'assistant', 
-                        content: content,
-                        timestamp: new Date()
-                    };
-                    this.messages.push(message);
-                    this.scrollToBottom();
-                    return message;
-                },
-
-                async sendMessage() {
-                    if (!this.currentMessage.trim() || this.isTyping || !this.isConfigured) {
-                        return;
-                    }
-
-                    const userMessage = this.currentMessage.trim();
-                    this.currentMessage = '';
+                
+                async createTask() {
+                    if (!this.canCreateTask()) return;
                     
-                    // Add user message
-                    this.addUserMessage(userMessage);
+                    const taskId = 'task-' + Date.now();
+                    const taskContent = this.newTaskContent.trim();
+                    this.newTaskContent = '';
                     
-                    // Show typing indicator
-                    this.isTyping = true;
-                    this.scrollToBottom();
+                    const task = {
+                        id: taskId,
+                        title: this.generateTaskTitle(taskContent),
+                        content: taskContent,
+                        status: 'working',
+                        createdAt: new Date(),
+                        modelUsed: this.settings.model,
+                        expanded: false,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: taskContent,
+                                timestamp: new Date()
+                            }
+                        ]
+                    };
                     
+                    this.tasks.unshift(task);
+                    this.saveToStorage();
+                    
+                    // Start the task in background
+                    this.runTask(task);
+                },
+                
+                async runTask(task) {
                     try {
                         const response = await fetch('/api/chat', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                message: userMessage,
+                                message: task.content,
                                 settings: this.settings,
-                                chatId: this.currentChatId,
-                                messages: this.messages.slice(-10) // Send last 10 messages for context
+                                chatId: task.id,
+                                messages: []
                             })
                         });
-
-                        if (!response.ok) {
-                            throw new Error('Failed to send message');
-                        }
-
-                        const data = await response.json();
-                        this.handleChatResponse(data);
-
-                    } catch (error) {
-                        this.showNotification('error', 'Error', 'Failed to send message');
-                        this.isTyping = false;
-                    }
-                },
-
-                handleChatResponse(data) {
-                    this.isTyping = false;
-                    
-                    if (data.response) {
-                        this.addAssistantMessage(data.response);
                         
-                        // Update chat title if it's the first message
-                        if (this.currentChat.title === 'New Chat' && this.messages.length >= 2) {
-                            this.currentChat.title = this.messages[0].content.substring(0, 50) + '...';
+                        const data = await response.json();
+                        
+                        // Update task with response
+                        const taskIndex = this.tasks.findIndex(t => t.id === task.id);
+                        if (taskIndex !== -1) {
+                            if (data.response) {
+                                this.tasks[taskIndex].status = 'completed';
+                                this.tasks[taskIndex].messages.push({
+                                    role: 'assistant',
+                                    content: data.response,
+                                    timestamp: new Date()
+                                });
+                            } else {
+                                this.tasks[taskIndex].status = 'error';
+                                this.tasks[taskIndex].messages.push({
+                                    role: 'assistant',
+                                    content: data.error || 'Unknown error occurred',
+                                    timestamp: new Date()
+                                });
+                            }
+                            this.saveToStorage();
+                        }
+                        
+                    } catch (error) {
+                        console.error('Task failed:', error);
+                        const taskIndex = this.tasks.findIndex(t => t.id === task.id);
+                        if (taskIndex !== -1) {
+                            this.tasks[taskIndex].status = 'error';
+                            this.tasks[taskIndex].messages.push({
+                                role: 'assistant',
+                                content: `Connection error: ${error.message}`,
+                                timestamp: new Date()
+                            });
+                            this.saveToStorage();
                         }
                     }
-                    
-                    if (data.error) {
-                        this.showNotification('error', 'Error', data.error);
+                },
+                
+                generateTaskTitle(content) {
+                    // Generate a short title from the content
+                    const words = content.split(' ').slice(0, 8);
+                    return words.join(' ') + (content.split(' ').length > 8 ? '...' : '');
+                },
+                
+                toggleTaskExpanded(taskId) {
+                    const task = this.tasks.find(t => t.id === taskId);
+                    if (task) {
+                        task.expanded = !task.expanded;
                     }
                 },
-
-                handleEnter(event) {
-                    if (event.shiftKey) {
-                        return; // Allow new line with Shift+Enter
-                    }
-                    this.sendMessage();
+                
+                truncateText(text, maxLength) {
+                    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
                 },
-
-                autoResize(event) {
-                    const textarea = event.target;
-                    textarea.style.height = 'auto';
-                    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-                },
-
-                scrollToBottom() {
-                    this.$nextTick(() => {
-                        const container = this.$refs.messagesContainer;
-                        if (container) {
-                            container.scrollTop = container.scrollHeight;
-                        }
-                    });
-                },
-
+                
                 formatMessage(content) {
-                    return content.replace(/\n/g, '<br>');
+                    return content
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em class="text-gray-300">$1</em>')
+                        .replace(/`(.*?)`/g, '<code class="bg-gray-900 px-2 py-1 rounded text-gray-100 text-sm font-mono">$1</code>')
+                        .replace(/\n/g, '<br>');
                 },
-
-                formatDate(date) {
-                    return new Date(date).toLocaleString();
+                
+                formatTime(date) {
+                    if (!date) return '';
+                    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 },
-
-                showNotification(type, title, message) {
-                    this.notification = { show: true, type, title, message };
-                    setTimeout(() => {
-                        this.notification.show = false;
-                    }, 5000);
+                
+                saveToStorage() {
+                    localStorage.setItem('openTerraAgents', JSON.stringify({
+                        settings: this.settings,
+                        tasks: this.tasks
+                    }));
+                },
+                
+                loadFromStorage() {
+                    const data = localStorage.getItem('openTerraAgents');
+                    if (data) {
+                        try {
+                            const parsed = JSON.parse(data);
+                            this.settings = { ...this.settings, ...parsed.settings };
+                            this.tasks = parsed.tasks || [];
+                        } catch (error) {
+                            console.error('Failed to load from storage:', error);
+                        }
+                    }
                 }
             }
         }

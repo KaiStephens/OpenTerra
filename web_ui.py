@@ -55,13 +55,13 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     settings: Dict[str, Any]
-    chatId: str
+    chatId: Optional[str] = None
     messages: List[Dict[str, Any]] = []
 
 class ChatResponse(BaseModel):
     response: Optional[str] = None
     error: Optional[str] = None
-    chatId: str
+    chatId: Optional[str] = None
     modelUsed: Optional[str] = None
 
 class ChatSettings(BaseModel):
@@ -109,7 +109,7 @@ class ChatManager:
             
             for ws in disconnected:
                 self.websocket_connections.remove(ws)
-    
+
     def get_api_client(self, provider: str, api_key: str):
         """Get the appropriate API client for the provider"""
         provider_config = get_provider_config(provider)
@@ -130,11 +130,11 @@ class ChatManager:
         try:
             # Validate settings
             if not settings.provider or not settings.apiKey:
-                return ChatResponse(
-                    response=None,
-                    error="Please configure your API key in settings",
-                    chatId=""
-                )
+                            return ChatResponse(
+                response=None,
+                error="Please configure your API key in settings",
+                chatId=None
+            )
             
             # Determine which model to use
             final_model = settings.model or DEFAULT_MODELS.get(settings.provider, "")
@@ -147,7 +147,7 @@ class ChatManager:
                 return ChatResponse(
                     response=None,
                     error="Please select a model or enter a custom model",
-                    chatId=""
+                    chatId=None
                 )
             
             # Create API client
@@ -166,7 +166,7 @@ class ChatManager:
             return ChatResponse(
                 response=response_text,
                 error=None,
-                chatId="",
+                chatId=None,
                 modelUsed=final_model
             )
             
@@ -184,7 +184,7 @@ class ChatManager:
             return ChatResponse(
                 response=None,
                 error=error_msg,
-                chatId="",
+                chatId=None,
                 modelUsed=final_model if 'final_model' in locals() else None
             )
     
@@ -266,7 +266,7 @@ class ChatManager:
             if provider == "anthropic":
                 # Test with a simple message for Anthropic
                 response = client.messages.create(
-                    model="claude-3-haiku-20240307",
+                    model="claude-3-7-sonnet",  # Updated to current model
                     max_tokens=5,
                     messages=[{"role": "user", "content": "Hi"}]
                 )
@@ -305,7 +305,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
             chat_history=request.messages
         )
         
-        response.chatId = request.chatId
+        response.chatId = request.chatId or f"chat-{uuid.uuid4().hex[:8]}"
         
         # Broadcast to websocket clients if needed
         await chat_manager.broadcast_message("chat_response", response.model_dump())
@@ -316,7 +316,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         return ChatResponse(
             response=None,
             error=f"Server error: {str(e)}",
-            chatId=request.chatId
+            chatId=request.chatId or f"chat-{uuid.uuid4().hex[:8]}"
         )
 
 @app.get("/api/providers")
@@ -341,7 +341,8 @@ async def get_providers():
             "name": config["name"],
             "apiKeyLabel": config["api_key_label"],
             "defaultModel": config["default_model"],
-            "models": models_with_display
+            "models": models_with_display,
+            "supportsCustomModels": provider_name == "openrouter"
         })
     
     return {"providers": providers_data}
